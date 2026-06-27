@@ -151,4 +151,99 @@ for (let i = 0; i < 3; i++) {
     - That inner function + that alive variable = closure.
     - Each outer() call = fresh independent closure.
     - Closures are used for data privacy, remembering state, event handlers.
+*/// ─── var vs let IN LOOPS (Deep Dive) ────────────────────────────────────────
+ 
+/*
+    MOST PEOPLE EXPECT THIS TO PRINT: 0, 1, 2
+    BUT IT ACTUALLY PRINTS:           3, 3, 3
+*/
+ 
+for (var i = 0; i < 3; i++) {
+    setTimeout(() => console.log(i), 1000);
+}
+ 
+/*
+    WHY 3, 3, 3 ?
+    -------------
+    var is NOT block scoped.
+    So there is only ONE i shared across all iterations.
+ 
+    What happens step by step:
+        iteration 1 → i = 0 → setTimeout registered → moves on immediately
+        iteration 2 → i = 1 → setTimeout registered → moves on immediately
+        iteration 3 → i = 2 → setTimeout registered → moves on immediately
+        loop ends   → i = 3  (loop condition failed here)
+ 
+        ...1000ms later...
+ 
+        all three setTimeouts fire → all read i → i is already 3
+ 
+    All three callbacks share the SAME i.
+    By the time they run, i is already 3.
+*/
+ 
+ 
+/*
+    WHAT IF I GIVE 0ms INSTEAD OF 1000ms ?
+    ----------------------------------------
+    Even with 0ms the output is still 3, 3, 3.
+ 
+    Because setTimeout(fn, 0) does NOT mean "run immediately."
+    It means → go to Callback Queue → wait until Call Stack is empty.
+ 
+    The loop ALWAYS finishes first before any setTimeout callback runs.
+    So i is already 3 before any callback executes.
+ 
+        loop runs fully → i = 3 → Call Stack empty
+        ↓
+        all three callbacks run → i is already 3
+*/
+ 
+for (var i = 0; i < 3; i++) {
+    setTimeout(() => console.log(i), 0); // still prints 3, 3, 3
+}
+ 
+ 
+/*
+    WITH let — PRINTS 0, 1, 2
+    --------------------------
+    let IS block scoped.
+    Each iteration gets its OWN fresh i.
+ 
+    What happens step by step:
+        iteration 1 → its OWN i = 0 → setTimeout registered → i = 0 saved
+        iteration 2 → its OWN i = 1 → setTimeout registered → i = 1 saved
+        iteration 3 → its OWN i = 2 → setTimeout registered → i = 2 saved
+ 
+        ...1000ms later...
+ 
+        first callback  → prints its own i → 0
+        second callback → prints its own i → 1
+        third callback  → prints its own i → 2
+*/
+ 
+for (let i = 0; i < 3; i++) {
+    setTimeout(() => console.log(i), 1000); // prints 0, 1, 2
+}
+ 
+ 
+/*
+    THIS IS CLOSURE AGAIN
+    ----------------------
+    Each setTimeout callback is an inner function.
+    Each one closes over its own i and keeps it alive in memory.
+ 
+    With let:
+        iteration 1 creates → callback + i=0  (its own closure)
+        iteration 2 creates → callback + i=1  (its own closure)
+        iteration 3 creates → callback + i=2  (its own closure)
+ 
+    With var:
+        all three callbacks share ONE i → no separate closures
+        by the time they run → i = 3
+ 
+ 
+    SIMPLE RULE:
+        var  → one shared i  → all callbacks see final value → 3, 3, 3
+        let  → own fresh i   → each callback sees its own   → 0, 1, 2
 */
